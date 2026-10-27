@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Category": "Gameplay Features",
+	"Description": "With this asset you can switch the weather in your game from dry to wet, frim no rain to rain back and forth.",
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": false,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "GameplayStateTree",
+			"Enabled": false
+		}
+	],
+	"EngineAssociation": "5.8"
+}

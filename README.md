@@ -10,6 +10,15 @@ Mac arm64 플러그인 빌드와 Fab Weather System을 포함한 Mac·Android AS
 - [Fab Weather System 적용·Mac 검증](Docs/WeatherSystem.md)
 - [맵 생성·노출 보정 도구 설명](Docs/WeatherTest.md)
 
-이 자료는 원래 buildtest 프로젝트에 추가한 소스·도구·문서·테스트맵을 대상으로 합니다. 원본 프로젝트 콘텐츠가 필요하며 APK·엔진·빌드 캐시는 포함하지 않습니다. 프로젝트에 Plugins/SimpleWeather, Source, Tools/WeatherTest와 새 맵을 함께 적용해야 Android 네이티브 빌드를 재현할 수 있습니다.
+이 저장소에는 `buildtest.uproject`, 기존 Config·Mac 빌드 설정, WeatherSystem 프로젝트 설정과 추가 C++ 플러그인·게임 모듈·도구·문서를 포함합니다. 콘텐츠 에셋·맵·캐릭터 원본 모델·텍스처·음원·APK·엔진·빌드 캐시는 별도로 보관합니다.
+
+```sh
+git clone https://github.com/kuris/unrealjumo.git
+cd unrealjumo
+```
+
+기존 프로젝트의 `Content`와 원본 모델·텍스처·음원을 별도로 가져온 뒤 UE 5.8.2와 대상 플랫폼 SDK를 준비하고 `buildtest.uproject`를 엽니다. 새 테스트맵은 관련 도구로 생성하거나 보관한 맵을 복사해야 합니다. 저장소만 복제한 상태에서는 게임을 바로 실행할 수 없습니다. Mac·Android 빌드 명령은 위 문서를 참고하세요.
+
+저장소의 AndroidFileServer `SecurityToken`은 비워 두며, 기기 연결용 로컬 토큰은 업로드하지 않습니다. 보호 파일 기준 해시는 저장소에 기록한 설정값에 맞춥니다. 로컬 개발 토큰을 설정하면 해당 설정 파일의 보호 해시가 달라질 수 있습니다.
 
 Android 재배포 시 Mac 쿠커 플러그인과 Android 데이터를 함께 빌드·쿠킹합니다. 설치 도구는 전체 쿠킹 빌드의 소스 지문과 APK 해시를 확인합니다. 이전 네이티브 교체 APK는 시작 크래시가 확인되어 `.apk.invalid`로 격리했으며 재사용하지 않습니다. 최신 Fab 적용 상태와 Mac 검증 결과는 [WeatherSystem.md](Docs/WeatherSystem.md)에 기록합니다.
