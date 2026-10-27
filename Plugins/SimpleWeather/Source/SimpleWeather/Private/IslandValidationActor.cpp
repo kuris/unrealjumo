@@ -63,7 +63,7 @@ void AIslandValidationActor::CheckWeatherSystem(float ExpectedAmount)
 void AIslandValidationActor::Shot(const FString& Name)
 {
     PendingCapture = Output / (Name + TEXT(".png"));
-    FScreenshotRequest::RequestScreenshot(PendingCapture, false, false);
+    FScreenshotRequest::RequestScreenshot(PendingCapture, true, false);
     UE_LOG(LogTemp, Display, TEXT("ISLAND_CAPTURE: %s"), *Name);
 }
 void AIslandValidationActor::View(ACharacter* Character)
@@ -84,6 +84,7 @@ void AIslandValidationActor::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
     Elapsed += DeltaSeconds;
+    if (Phase >= 30) { TickDialogueValidation(); return; }
     APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
     if (Phase == 0 && Elapsed >= 3.f)
     {
@@ -245,7 +246,7 @@ void AIslandValidationActor::Tick(float DeltaSeconds)
             Player->SetActorLocation(PlayerReturnLocation, false, nullptr, ETeleportType::TeleportPhysics);
             Player->GetCharacterMovement()->StopMovementImmediately();
             PC->SetViewTarget(Player);
-            Phase = 12;
+            Phase = FParse::Param(FCommandLine::Get(), TEXT("DialogueValidate")) ? 30 : 12;
         }
     }
     else if (Phase == 12)
@@ -254,6 +255,7 @@ void AIslandValidationActor::Tick(float DeltaSeconds)
         if (bBothCompleted || Elapsed > 220.f)
         {
             Check(bBothCompleted, TEXT("Both characters completed a full hill loop"));
+            if (bValidationHoldingInput) { PC->SetIgnoreMoveInput(false); bValidationHoldingInput = false; }
             UE_LOG(LogTemp, Display, TEXT("ISLAND_VALIDATION_%s: elapsed=%.1f"), bFailed ? TEXT("FAIL") : TEXT("PASS"), Elapsed);
             Phase = 13;
             if (FParse::Param(FCommandLine::Get(), TEXT("IslandValidationExit")))
@@ -275,6 +277,8 @@ void AIslandValidationActor::SaveCapture(int32 Width, int32 Height, const TArray
 }
 void AIslandValidationActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    if (bValidationHoldingInput)
+        if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0)) PC->SetIgnoreMoveInput(false);
     if (CaptureHandle.IsValid()) UGameViewportClient::OnScreenshotCaptured().Remove(CaptureHandle);
     Super::EndPlay(EndPlayReason);
 }

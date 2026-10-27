@@ -1,4 +1,5 @@
 #include "IslandPatrolCharacter.h"
+#include "DialogueComponent.h"
 #include "Animation/AnimSequence.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -8,6 +9,7 @@
 AIslandPatrolCharacter::AIslandPatrolCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
+    Dialogue = CreateDefaultSubobject<UDialogueComponent>(TEXT("Dialogue"));
     AutoPossessPlayer = EAutoReceiveInput::Disabled;
     AutoPossessAI = EAutoPossessAI::Disabled;
     bUseControllerRotationYaw = false;
@@ -64,8 +66,9 @@ bool AIslandPatrolCharacter::UpdatePlayerAttention(float DeltaSeconds)
     const float ExitRadius = FMath::Max(EnterRadius + 1.f, ResumeDistance);
     const float Radius = bFacingPlayer ? ExitRadius : EnterRadius;
     const bool bShouldFace = IsValid(Player) && Player != this
-        && FMath::Abs(Offset.Z) <= FMath::Max(0.f, MaxInteractionHeight)
-        && Offset.SizeSquared2D() <= FMath::Square(Radius);
+        && ((Dialogue && Dialogue->IsInConversation())
+            || (FMath::Abs(Offset.Z) <= FMath::Max(0.f, MaxInteractionHeight)
+                && Offset.SizeSquared2D() <= FMath::Square(Radius)));
     UCharacterMovementComponent* Movement = GetCharacterMovement();
     if (bShouldFace != bFacingPlayer)
     {

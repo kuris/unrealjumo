@@ -14,6 +14,7 @@ def file_hash(path):
 
 def source_fingerprint(root):
     files = [root / "Plugins/SimpleWeather/SimpleWeather.uplugin"]
+    files.extend(p for p in (root / "Plugins/SimpleWeather/Data").rglob("*") if p.is_file())
     files.append(root / "Tools/WeatherTest/create_rain_material.py")
     rain_material = root / "Content/Weather/M_ClearRain.uasset"
     if rain_material.is_file():

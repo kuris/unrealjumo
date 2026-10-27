@@ -18,6 +18,7 @@ public:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
     FString GetLocomotionState() const { return CurrentState; }
     bool IsCompatible() const;
+    bool HasSwimmingAnimations() const;
 protected:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -26,6 +27,8 @@ private:
     UPROPERTY() TObjectPtr<UAnimSequence> Walk;
     UPROPERTY() TObjectPtr<UAnimSequence> Run;
     UPROPERTY() TObjectPtr<UAnimSequence> Jump;
+    UPROPERTY() TObjectPtr<UAnimSequence> SwimIdle;
+    UPROPERTY() TObjectPtr<UAnimSequence> SwimForward;
     UPROPERTY() TSubclassOf<UAnimInstance> OriginalAnimClass;
     TWeakObjectPtr<ACharacter> Character;
     float OriginalWalkingSpeed = 600.f;

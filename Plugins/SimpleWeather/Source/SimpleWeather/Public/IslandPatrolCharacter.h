@@ -5,6 +5,7 @@
 #include "IslandPatrolCharacter.generated.h"
 
 class UAnimSequence;
+class UDialogueComponent;
 
 /** A ground-following walking patrol for the island's two background characters. */
 UCLASS()
@@ -19,6 +20,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category="Island Patrol|Conversation")
     bool IsFacingPlayer() const { return bFacingPlayer; }
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Island Patrol|Conversation")
+    TObjectPtr<UDialogueComponent> Dialogue;
 
     /** Stop walking when the player is within this horizontal distance (cm). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Island Patrol|Conversation", meta=(ClampMin="0", Units="cm"))

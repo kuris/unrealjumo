@@ -1,5 +1,7 @@
 #include "WeatherControlWidget.h"
+#include "FairySwimmingComponent.h"
 #include "SimpleWeatherActor.h"
+#include "IslandUIStyle.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
@@ -9,6 +11,7 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "UObject/UObjectIterator.h"
 
 void UWeatherControlWidget::NativeOnInitialized()
 {
@@ -20,6 +23,7 @@ void UWeatherControlWidget::NativeOnInitialized()
     SafeArea->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     WidgetTree->RootWidget = SafeArea;
     UCanvasPanel* Canvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("WeatherCanvas"));
+    ControlCanvas = Canvas;
     Canvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     SafeArea->SetContent(Canvas);
 
@@ -37,8 +41,7 @@ void UWeatherControlWidget::NativeOnInitialized()
 
     Label = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("WeatherLabel"));
     Label->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-    FSlateFontInfo Font = Label->GetFont();
-    Font.Size = 20;
+    FSlateFontInfo Font = IslandUIStyle::Font(20);
     Label->SetFont(Font);
     Label->SetJustification(ETextJustify::Center);
     Label->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -74,6 +77,8 @@ void UWeatherControlWidget::NativeOnInitialized()
     {
         UButton* Action = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), FName(Name));
         Action->SetBackgroundColor(FLinearColor(0.025f, 0.08f, 0.14f, 0.85f));
+        Action->SetTouchMethod(EButtonTouchMethod::Down);
+        Action->SetClickMethod(EButtonClickMethod::MouseDown);
         UCanvasPanelSlot* Slot = Canvas->AddChildToCanvas(Action);
         Slot->SetAnchors(FAnchors(1.f, 0.f));
         Slot->SetAlignment(FVector2D(1.f, 0.f));
@@ -92,19 +97,47 @@ void UWeatherControlWidget::NativeOnInitialized()
     UButton* RunButton = AddActionButton(TEXT("CharacterRun"),
         NSLOCTEXT("SimpleWeather", "Run", "달리기 OFF"), 180.f, RunText);
     RunLabel = RunText;
+    RunPosition = Cast<UCanvasPanelSlot>(RunButton->Slot);
+    RunPosition->SetAnchors(FAnchors(0.f, 0.f));
+    RunPosition->SetAlignment(FVector2D::ZeroVector);
     RunButton->OnPressed.AddDynamic(this, &UWeatherControlWidget::HandleRunPressed);
     UTextBlock* JumpText = nullptr;
     UButton* JumpButton = AddActionButton(TEXT("CharacterJump"),
         NSLOCTEXT("SimpleWeather", "Jump", "점프"), 256.f, JumpText);
+    JumpPosition = Cast<UCanvasPanelSlot>(JumpButton->Slot);
+    JumpPosition->SetAnchors(FAnchors(0.f, 0.f));
+    JumpPosition->SetAlignment(FVector2D::ZeroVector);
+    // Jump retains touch capture so releasing the finger also releases Jump().
+    JumpButton->SetTouchMethod(EButtonTouchMethod::DownAndUp);
+    JumpButton->SetClickMethod(EButtonClickMethod::DownAndUp);
     JumpButton->OnPressed.AddDynamic(this, &UWeatherControlWidget::HandleJumpPressed);
     JumpButton->OnReleased.AddDynamic(this, &UWeatherControlWidget::HandleJumpReleased);
+    UTextBlock* SwimText = nullptr;
+    UButton* SwimButton = AddActionButton(TEXT("CharacterSwim"),
+        NSLOCTEXT("SimpleWeather", "Swim", "수영하기"), 332.f, SwimText);
+    SwimLabel = SwimText;
+    SwimPosition = Cast<UCanvasPanelSlot>(SwimButton->Slot);
+    SwimPosition->SetAnchors(FAnchors(0.f, 0.f));
+    SwimPosition->SetAlignment(FVector2D::ZeroVector);
+    SwimButton->SetVisibility(ESlateVisibility::Collapsed);
+    SwimButton->OnPressed.AddDynamic(this, &UWeatherControlWidget::HandleSwimPressed);
     RefreshLabel();
+}
+
+void UWeatherControlWidget::HandleSwimPressed()
+{
+    if (!GetIsEnabled()) return;
+    if (APawn* Pawn = GetOwningPlayerPawn())
+        if (auto* Swimming = Pawn->FindComponentByClass<UFairySwimmingComponent>()) Swimming->StartSwimming();
 }
 
 void UWeatherControlWidget::HandleRunPressed()
 {
+    UE_LOG(LogTemp, Display, TEXT("CHARACTER_INPUT: run touch received enabled=%d pawn=%s"), GetIsEnabled(), *GetNameSafe(GetOwningPlayerPawn()));
+    if (!GetIsEnabled()) return;
     ACharacter* Character = Cast<ACharacter>(GetOwningPlayerPawn());
     if (!Character || !Character->GetCharacterMovement()) return;
+    if (Character->GetCharacterMovement()->IsSwimming()) return;
     if (RunningCharacter.Get() != Character)
     {
         if (RunningCharacter.IsValid() && bRunning)
@@ -123,8 +156,11 @@ void UWeatherControlWidget::HandleRunPressed()
 
 void UWeatherControlWidget::HandleJumpPressed()
 {
+    UE_LOG(LogTemp, Display, TEXT("CHARACTER_INPUT: jump touch received enabled=%d pawn=%s"), GetIsEnabled(), *GetNameSafe(GetOwningPlayerPawn()));
+    if (!GetIsEnabled()) return;
     if (ACharacter* Character = Cast<ACharacter>(GetOwningPlayerPawn()))
     {
+        if (Character->GetCharacterMovement()->IsSwimming()) return;
         JumpingCharacter = Character;
         Character->Jump();
         UE_LOG(LogTemp, Display, TEXT("CHARACTER_INPUT: jump pressed, can jump %d"), Character->CanJump());
@@ -140,12 +176,100 @@ void UWeatherControlWidget::HandleJumpReleased()
 
 void UWeatherControlWidget::NativeDestruct()
 {
+    if (LegacyJumpButton.IsValid())
+    {
+        LegacyJumpButton->SetVisibility(LegacyJumpVisibility);
+        LegacyJumpButton->SetIsEnabled(bLegacyJumpEnabled);
+    }
     HandleJumpReleased();
     if (RunningCharacter.IsValid() && bRunning)
         RunningCharacter->GetCharacterMovement()->MaxWalkSpeed = WalkingSpeed;
     RunningCharacter.Reset();
     bRunning = false;
     Super::NativeDestruct();
+}
+
+void UWeatherControlWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
+{
+    Super::NativeTick(Geometry, DeltaTime);
+    ACharacter* Pawn = Cast<ACharacter>(GetOwningPlayerPawn());
+    const bool bSwimming = Pawn && Pawn->GetCharacterMovement()->IsSwimming();
+    const auto* Swimming = Pawn ? Pawn->FindComponentByClass<UFairySwimmingComponent>() : nullptr;
+    if (UWidget* SwimButton = GetWidgetFromName(TEXT("CharacterSwim")))
+    {
+        const bool bActive = Swimming && Swimming->IsSurfaceSwimming();
+        const bool bCanStart = Swimming && Swimming->CanStartSwimming();
+        SwimButton->SetVisibility(bActive || bCanStart ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+        SwimButton->SetIsEnabled(bCanStart);
+        if (SwimLabel) SwimLabel->SetText(bActive ? NSLOCTEXT("SimpleWeather", "Swimming", "수영 중")
+            : NSLOCTEXT("SimpleWeather", "Swim", "수영하기"));
+    }
+    if (bSwimming != bSwimControlsDisabled)
+    {
+        UWidget* Run = GetWidgetFromName(TEXT("CharacterRun"));
+        UWidget* Jump = GetWidgetFromName(TEXT("CharacterJump"));
+        if (bSwimming)
+        {
+            bRunEnabledBeforeSwim = Run && Run->GetIsEnabled();
+            bJumpEnabledBeforeSwim = Jump && Jump->GetIsEnabled();
+            HandleJumpReleased();
+        }
+        if (Run) Run->SetIsEnabled(!bSwimming && bRunEnabledBeforeSwim);
+        if (Jump) Jump->SetIsEnabled(!bSwimming && bJumpEnabledBeforeSwim);
+        bSwimControlsDisabled = bSwimming;
+    }
+    if (!ControlCanvas || !RunPosition || !JumpPosition) return;
+    if (!LegacyTouchWidget.IsValid())
+    {
+        for (TObjectIterator<UUserWidget> It; It; ++It)
+        {
+            if (It->GetWorld() == GetWorld() && It->IsInViewport() && *It != this
+                && (!It->GetOwningPlayer() || It->GetOwningPlayer() == GetOwningPlayer())
+                && It->GetWidgetFromName(TEXT("Thumbstick_Move")) && It->GetWidgetFromName(TEXT("Btn_Jump")))
+            {
+                LegacyTouchWidget = *It;
+                LegacyJumpButton = It->GetWidgetFromName(TEXT("Btn_Jump"));
+                LegacyJumpVisibility = LegacyJumpButton->GetVisibility();
+                bLegacyJumpEnabled = LegacyJumpButton->GetIsEnabled();
+                LegacyJumpButton->SetVisibility(ESlateVisibility::Collapsed);
+                LegacyJumpButton->SetIsEnabled(false);
+                UE_LOG(LogTemp, Display, TEXT("ISLAND_CONTROLS: replaced legacy Btn_Jump; actions beside movement stick"));
+                break;
+            }
+        }
+    }
+    const FGeometry& CanvasGeometry = ControlCanvas->GetCachedGeometry();
+    const FVector2D Size = CanvasGeometry.GetLocalSize();
+    if (Size.X < 1.f || Size.Y < 1.f) return;
+    FVector2D Beside(Size.X * 0.1f + FMath::Min(Size.X, Size.Y) * 0.16f + 16.f, Size.Y * 0.85f);
+    float RightLimit = Size.X - 16.f;
+    if (LegacyTouchWidget.IsValid())
+    {
+        if (UWidget* Stick = LegacyTouchWidget->GetWidgetFromName(TEXT("Thumbstick_Move")))
+        {
+            const FGeometry& StickGeometry = Stick->GetCachedGeometry();
+            if (StickGeometry.GetLocalSize().X > 1.f)
+                Beside = CanvasGeometry.AbsoluteToLocal(StickGeometry.LocalToAbsolute(FVector2D(StickGeometry.GetLocalSize().X, StickGeometry.GetLocalSize().Y * 0.5f))) + FVector2D(14.f, 0.f);
+        }
+        if (UWidget* Aim = LegacyTouchWidget->GetWidgetFromName(TEXT("Thumbstick_Aim")))
+        {
+            const FGeometry& AimGeometry = Aim->GetCachedGeometry();
+            if (AimGeometry.GetLocalSize().X > 1.f)
+                RightLimit = CanvasGeometry.AbsoluteToLocal(AimGeometry.LocalToAbsolute(FVector2D::ZeroVector)).X - 14.f;
+        }
+    }
+    const float Width = FMath::Clamp(float(Size.X * 0.105f), 96.f, 130.f);
+    const bool bStack = Beside.X + Width * 2.f + 12.f > RightLimit;
+    const float X = FMath::Clamp(float(Beside.X), 12.f, FMath::Max(12.f, float(Size.X - Width - 12.f)));
+    const float Y = FMath::Clamp(float(Beside.Y - (bStack ? 70.f : 32.f)), 12.f, FMath::Max(12.f, float(Size.Y - (bStack ? 140.f : 64.f) - 12.f)));
+    RunPosition->SetSize(FVector2D(Width, 64.f)); JumpPosition->SetSize(FVector2D(Width, 64.f));
+    RunPosition->SetPosition(FVector2D(X, Y));
+    JumpPosition->SetPosition(FVector2D(X + (bStack ? 0.f : Width + 12.f), Y + (bStack ? 76.f : 0.f)));
+    if (SwimPosition)
+    {
+        SwimPosition->SetSize(FVector2D(Width, 64.f));
+        SwimPosition->SetPosition(FVector2D(X, FMath::Max(12.f, Y - 76.f)));
+    }
 }
 
 void UWeatherControlWidget::SetWeatherActor(ASimpleWeatherActor* Actor)
@@ -173,11 +297,13 @@ void UWeatherControlWidget::RefreshLabel()
 
 void UWeatherControlWidget::HandleRainAmountChanged(float Value)
 {
+    if (!GetIsEnabled()) return;
     if (!bUpdatingControls && WeatherActor.IsValid()) WeatherActor->SetRainAmount(Value);
 }
 
 void UWeatherControlWidget::HandleWeatherClicked()
 {
+    if (!GetIsEnabled()) return;
     UE_LOG(LogTemp, Display, TEXT("WEATHER_INPUT: top weather button pressed"));
     if (WeatherActor.IsValid()) WeatherActor->ToggleWeather();
 }

@@ -21,6 +21,7 @@ try:
   if not rows:raise RuntimeError('Could not locate '+name)
   x,y,z=map(float,rows[-1])
   command('BugItGo %.1f %.1f 190 -5 -5 0'%(x-550,y+300))
+  command('Walk')
   command('slomo 1')
   time.sleep(0.35)
   command('slomo 0.001')
@@ -29,3 +30,4 @@ try:
  command('slomo 1')
 finally:
  command('slomo 1')
+ command('Walk')

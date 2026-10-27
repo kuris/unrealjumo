@@ -5,6 +5,8 @@
 Mac arm64 플러그인 빌드와 Fab Weather System을 포함한 Mac·Android ASTC 패키징이 성공했습니다. 선비·포졸의 언덕 주변 순찰과 주모의 걷기·달리기·점프를 구현했습니다. Mac 실행 검증을 통과했고, 최신 APK를 폴드8에 설치·실행해 비 100% 화면을 확인했습니다.
 
 - [캐릭터 에셋·언덕 순찰](Docs/IslandCharacters.md)
+- [NPC 대화 시스템·대사 편집·검증](Docs/DialogueSystem.md)
+- [선녀 수면 수영·Mixamo 애니메이션·검증](Docs/SwimmingSystem.md)
 - [2026-10-26 구현 보고서](Docs/ImplementationReport_2026-10-26.md)
 - [현재 상태·실행 명령·인수인계](Docs/WeatherWorkHandoff_2026-10-26.md)
 - [Fab Weather System 적용·Mac 검증](Docs/WeatherSystem.md)

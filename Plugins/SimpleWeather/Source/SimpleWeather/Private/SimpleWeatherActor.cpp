@@ -3,6 +3,9 @@
 #include "Sound/SoundWave.h"
 #include "WeatherControlWidget.h"
 #include "JumoLocomotionComponent.h"
+#include "FairySwimmingComponent.h"
+#include "SwimmingValidationActor.h"
+#include "DialogueManagerComponent.h"
 #include "IslandValidationActor.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -132,6 +135,8 @@ void ASimpleWeatherActor::BeginPlay()
     BuildRain(); // Restore transient animation data after loading a saved map.
     if (FParse::Param(FCommandLine::Get(), TEXT("IslandValidate")))
         GetWorld()->SpawnActor<AIslandValidationActor>();
+    if (FParse::Param(FCommandLine::Get(), TEXT("SwimmingValidate")))
+        GetWorld()->SpawnActor<ASwimmingValidationActor>();
     // Keep this correction in the weather actor; original project exposure
     // settings and source maps remain untouched.
     RuntimeExposure = NewObject<UPostProcessComponent>(this, TEXT("WeatherRuntimeExposure"));
@@ -272,6 +277,9 @@ void ASimpleWeatherActor::UpdateWeatherSystem()
 
 void ASimpleWeatherActor::ToggleWeather()
 {
+    if (const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
+        if (const UDialogueManagerComponent* Dialogue = Player->FindComponentByClass<UDialogueManagerComponent>())
+            if (Dialogue->IsConversationActive()) return;
     SetWeather(Weather == ESimpleWeather::Clear ? ESimpleWeather::Rain : ESimpleWeather::Clear);
 }
 
@@ -304,11 +312,23 @@ void ASimpleWeatherActor::SetupPlayerLocomotion()
 {
     ACharacter* Player = Cast<ACharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
     if (!Player) return;
+    if (!Player->FindComponentByClass<UFairySwimmingComponent>())
+    {
+        auto* Swimming = NewObject<UFairySwimmingComponent>(Player);
+        Player->AddInstanceComponent(Swimming);
+        Swimming->RegisterComponent();
+    }
     if (!Player->FindComponentByClass<UJumoLocomotionComponent>())
     {
         UJumoLocomotionComponent* Playback = NewObject<UJumoLocomotionComponent>(Player);
         Player->AddInstanceComponent(Playback);
         Playback->RegisterComponent();
+    }
+    if (!Player->FindComponentByClass<UDialogueManagerComponent>())
+    {
+        UDialogueManagerComponent* Dialogue = NewObject<UDialogueManagerComponent>(Player);
+        Player->AddInstanceComponent(Dialogue);
+        Dialogue->RegisterComponent();
     }
     GetWorldTimerManager().ClearTimer(LocomotionSetupTimer);
 }

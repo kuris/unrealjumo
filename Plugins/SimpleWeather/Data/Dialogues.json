@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "presentation": {
+    "playerDistanceCm": 200,
+    "cameraDistanceCm": 340,
+    "cameraSideOffsetCm": -260,
+    "cameraHeightCm": 110,
+    "focusHeightCm": 50,
+    "fieldOfView": 60,
+    "stagePlayer": true,
+    "restorePlayerTransform": true
+  },
+  "npcs": [
+    {
+      "id": "seonbi", "name": "선비", "entry": "greeting",
+      "nodes": [
+        {"id": "greeting", "text": "이 섬에는 처음 오셨소? 요즘 해변에서 이상한 소리가 들린다오.", "choices": [
+          {"id": "ask_sound", "text": "무슨 소리인가요?", "next": "sound"},
+          {"id": "ask_tavern", "text": "주막은 어디 있나요?", "next": "tavern"},
+          {"id": "leave", "text": "나중에 다시 올게요.", "end": true}
+        ]},
+        {"id": "sound", "text": "밤이 되면 숲길 끝에서 누군가 부르는 소리가 들린다오. 아직 정체를 확인한 사람은 없소.", "choices": [
+          {"id": "acknowledge", "text": "알겠습니다.", "end": true},
+          {"id": "back", "text": "다른 것도 여쭤볼게요.", "next": "greeting"}
+        ]},
+        {"id": "tavern", "text": "주막은 저 언덕 너머에 있다오. 길을 따라가면 찾을 수 있을 것이오.", "choices": [
+          {"id": "thanks", "text": "고맙습니다.", "end": true},
+          {"id": "back", "text": "다른 것도 여쭤볼게요.", "next": "greeting"}
+        ]}
+      ]
+    },
+    {
+      "id": "pojol", "name": "포졸", "entry": "greeting",
+      "nodes": [
+        {"id": "greeting", "text": "최근 이 근처에 낯선 자가 나타났다는 이야기가 있소. 밤에는 함부로 돌아다니지 마시오.", "choices": [
+          {"id": "ask_stranger", "text": "어떤 사람인가요?", "next": "stranger"},
+          {"id": "ask_sighting", "text": "여기 근처에서 본 적 있나요?", "next": "sighting"},
+          {"id": "leave", "text": "알겠습니다.", "end": true}
+        ]},
+        {"id": "stranger", "text": "검은 옷을 입었다는 소문뿐이오. 아직 확실한 것은 없소.", "choices": [
+          {"id": "acknowledge", "text": "알겠습니다.", "end": true},
+          {"id": "back", "text": "다른 것도 여쭤볼게요.", "next": "greeting"}
+        ]},
+        {"id": "sighting", "text": "나는 보지 못했지만, 해변을 순찰하는 이들이 수상한 그림자를 보았다고 하오.", "choices": [
+          {"id": "acknowledge", "text": "알겠습니다.", "end": true},
+          {"id": "back", "text": "다른 것도 여쭤볼게요.", "next": "greeting"}
+        ]}
+      ]
+    }
+  ]
+}

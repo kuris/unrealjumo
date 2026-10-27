@@ -1,4 +1,5 @@
 #include "JumoLocomotionComponent.h"
+#include "FairySwimmingComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimSingleNodeInstance.h"
@@ -16,6 +17,16 @@ UJumoLocomotionComponent::UJumoLocomotionComponent()
     static ConstructorHelpers::FObjectFinder<UAnimSequence> RunAsset(TEXT("/Game/Characters/JumoAnimations/jumo_final_glb_riggedrun"));
     static ConstructorHelpers::FObjectFinder<UAnimSequence> JumpAsset(TEXT("/Game/Characters/JumoAnimations/jumo_final_glb_riggedjump"));
     Idle = IdleAsset.Object; Walk = WalkAsset.Object; Run = RunAsset.Object; Jump = JumpAsset.Object;
+    static ConstructorHelpers::FObjectFinderOptional<UAnimSequence> SwimIdleAsset(TEXT("/Game/Characters/JumoAnimations/Swimming/AS_Fairy_SwimIdle"));
+    static ConstructorHelpers::FObjectFinderOptional<UAnimSequence> SwimForwardAsset(TEXT("/Game/Characters/JumoAnimations/Swimming/AS_Fairy_SwimForward"));
+    SwimIdle = SwimIdleAsset.Get();
+    SwimForward = SwimForwardAsset.Get();
+}
+
+bool UJumoLocomotionComponent::HasSwimmingAnimations() const
+{
+    return IsCompatible() && SwimIdle && SwimForward && SwimIdle->GetSkeleton() == Idle->GetSkeleton()
+        && SwimForward->GetSkeleton() == Idle->GetSkeleton();
 }
 
 bool UJumoLocomotionComponent::IsCompatible() const
@@ -37,6 +48,7 @@ void UJumoLocomotionComponent::BeginPlay()
     }
     OriginalAnimClass = Character->GetMesh()->GetAnimClass();
     OriginalWalkingSpeed = Character->GetCharacterMovement()->MaxWalkSpeed;
+    if (auto* Swimming = Character->FindComponentByClass<UFairySwimmingComponent>()) AddTickPrerequisiteComponent(Swimming);
     UE_LOG(LogTemp, Display, TEXT("JUMO_LOCOMOTION_READY: idle/walk/run/jump, base speed %.0f"), OriginalWalkingSpeed);
 }
 
@@ -48,13 +60,17 @@ void UJumoLocomotionComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
     const float Speed = Character->GetVelocity().Size2D();
     const bool bAirborne = Movement->IsFalling();
     const bool bRunning = Movement->MaxWalkSpeed > OriginalWalkingSpeed * 1.1f;
-    const FString NewState = bAirborne ? TEXT("Jump") : Speed < 10.f ? TEXT("Idle") : bRunning ? TEXT("Run") : TEXT("Walk");
+    const auto* Swimming = Character->FindComponentByClass<UFairySwimmingComponent>();
+    const bool bSwimming = Swimming && Swimming->IsSurfaceSwimming() && HasSwimmingAnimations();
+    const FString NewState = bSwimming ? (Speed < 15.f ? TEXT("SwimIdle") : TEXT("SwimForward"))
+        : bAirborne ? TEXT("Jump") : Speed < 10.f ? TEXT("Idle") : bRunning ? TEXT("Run") : TEXT("Walk");
     USkeletalMeshComponent* Mesh = Character->GetMesh();
     if (NewState != CurrentState)
     {
-        UAnimSequence* Clip = bAirborne ? Jump.Get() : Speed < 10.f ? Idle.Get() : bRunning ? Run.Get() : Walk.Get();
-        Mesh->PlayAnimation(Clip, !bAirborne);
-        if (bAirborne)
+        UAnimSequence* Clip = bSwimming ? (Speed < 15.f ? SwimIdle.Get() : SwimForward.Get())
+            : bAirborne ? Jump.Get() : Speed < 10.f ? Idle.Get() : bRunning ? Run.Get() : Walk.Get();
+        Mesh->PlayAnimation(Clip, bSwimming || !bAirborne);
+        if (bAirborne && !bSwimming)
         {
             const float AirTime = FMath::Max(0.4f, 2.f * Movement->JumpZVelocity / FMath::Max(1.f, FMath::Abs(Movement->GetGravityZ())));
             Mesh->GetSingleNodeInstance()->SetPlayRate(Clip->GetPlayLength() / AirTime);
@@ -65,7 +81,7 @@ void UJumoLocomotionComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
         CurrentState = NewState;
         UE_LOG(LogTemp, Display, TEXT("JUMO_LOCOMOTION_STATE: %s clip=%s speed=%.0f"), *CurrentState, *Clip->GetName(), Speed);
     }
-    if (!bAirborne && Speed >= 10.f && Mesh->GetSingleNodeInstance())
+    if (!bSwimming && !bAirborne && Speed >= 10.f && Mesh->GetSingleNodeInstance())
     {
         const float ReferenceSpeed = OriginalWalkingSpeed * (bRunning ? 1.6f : 1.f);
         Mesh->GetSingleNodeInstance()->SetPlayRate(FMath::Clamp(Speed / FMath::Max(1.f, ReferenceSpeed), 0.65f, 1.6f));

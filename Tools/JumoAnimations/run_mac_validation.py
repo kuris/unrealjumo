@@ -13,7 +13,7 @@ output.mkdir(parents=True)
 captures=Path.home()/'Library/Containers/com.YourCompany.buildtest/Data/Library/Caches/IslandValidation'/output.name
 captures.mkdir(parents=True,exist_ok=True)
 log_path=output/'runtime.log'
-command=[str(app/'Contents/MacOS/buildtest'),'/Game/Maps/LV_BeachIsland_Weather','-windowed','-ResX=1280','-ResY=800','-ForceRes','-NoSplash','-IslandValidate','-IslandValidationExit','-IslandValidationOutput='+str(captures),'-stdout','-forcelogflush']
+command=[str(app/'Contents/MacOS/buildtest'),'/Game/Maps/LV_BeachIsland_Weather','-windowed','-ResX=1280','-ResY=800','-ForceRes','-NoSplash','-IslandValidate','-DialogueValidate','-IslandValidationExit','-IslandValidationOutput='+str(captures),'-stdout','-forcelogflush']
 with log_path.open('w') as log:
  process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT)
  print('MAC_VALIDATION_STARTED:',process.pid,output,flush=True)
@@ -40,7 +40,7 @@ for path in captures.glob('*.png'):
 checks=[line.split('ISLAND_CHECK_PASS: ',1)[1] for line in data.splitlines() if 'ISLAND_CHECK_PASS: ' in line]
 failures=[line for line in data.splitlines() if 'ISLAND_CHECK_FAIL:' in line]
 screenshots=[p.name for p in output.glob('*.png')]
-passed='ISLAND_VALIDATION_PASS:' in data and not failures and len(screenshots)>=9
+passed=result_code == 0 and 'ISLAND_VALIDATION_PASS:' in data and 'DIALOGUE_VALIDATION_COMPLETED:' in data and not failures and len(screenshots)>=15
 if (root/'Saved/WeatherSystem/application_report.json').is_file():
  passed = passed and any('Fab Niagara rainfall 50%' in check for check in checks)
  passed = passed and any('Fab surface humidity matches weather' in check for check in checks)
