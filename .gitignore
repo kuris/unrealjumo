@@ -1,0 +1,15 @@
+.DS_Store
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Android_ASTC/
+Tools/WeatherTest/*.log
+Tools/WeatherTest/*.json
+!Tools/WeatherTest/protected_baseline.json
+__pycache__/
+Build/Android/src/
+Build/Mac/FileOpenOrder/
+.aws/
+.env
+.env.*

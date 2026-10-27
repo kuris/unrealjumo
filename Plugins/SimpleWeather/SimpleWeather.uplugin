@@ -1,0 +1,15 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "Simple Weather",
+  "Description": "Isolated clear/rain actor and opt-in weather test map generator.",
+  "Category": "Environment",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "Plugins": [{ "Name": "Niagara", "Enabled": true }],
+  "Modules": [
+    { "Name": "SimpleWeather", "Type": "Runtime", "LoadingPhase": "Default" },
+    { "Name": "SimpleWeatherEditor", "Type": "Editor", "LoadingPhase": "Default" }
+  ]
+}
